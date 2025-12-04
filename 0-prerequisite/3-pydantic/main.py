@@ -22,10 +22,10 @@ from pydantic import (
 
 class User(BaseModel):  # defining User class with Pydantic basemodel
     model_config = ConfigDict(
-        populate_by_name=True  # allow population by field name
-        strict=True  # enable strict type checking
-        extra="allow"  # allow extra fields not defined in the model
-        frozen=True  # make model immutable
+        populate_by_name=True,  # allow population by field name
+        strict=True,  # enable strict type checking
+        extra="allow",  # allow extra fields not defined in the model
+        frozen=True,  # make model immutable
     )
 
     # uid is field name of type UUID
@@ -54,7 +54,7 @@ class User(BaseModel):  # defining User class with Pydantic basemodel
         if not v.replace("_", "").isalnum():  # check if username is alphanumeric
             # raise error if not
             raise ValueError("Username must be alphanumeric")
-        return v.lower  # return valid username
+        return v.lower()  # return valid username
 
     # validate website field before standard validation
     @field_validator("website", mode="before")
@@ -116,3 +116,24 @@ class UserRegistration(BaseModel):
             # raise validation error
             raise ValueError("Passwords do not match")
         return self  # return the validated model instance
+
+
+user_data = {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "username": "aaditya_01",
+    "email": "aaditya@abc.com",
+    "website": "www.aaditya.com",
+    "age": 26,
+    "first_name": "Aditya",
+    "last_name": "Mishra",
+    "follower_count": 15000,
+    "password": "secure123",
+    "confirm_password": "securepassword",
+    "notes": "This is an extra field not defined in the model.",
+}
+
+
+user = User.model_validate_json(json.dumps(user_data))
+user.email = "aaditya@gmail.com"
+
+print(user.model_dump_json(indent=4))  # print user data as formatted JSON
