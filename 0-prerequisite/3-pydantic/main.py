@@ -47,3 +47,32 @@ class User(BaseModel):  # defining User class with Pydantic basemodel
     first_name: str = ""
     last_name: str = ""
     follower_count: int = 0
+
+    @field_validator("username")  # this function validates username field
+    @classmethod  # class method decorator
+    def validate_username(cls, v: str) -> str:
+        if not v.replace("_", "").isalnum():  # check if username is alphanumeric
+            # raise error if not
+            raise ValueError("Username must be alphanumeric")
+        return v.lower  # return valid username
+
+    # validate website field before standard validation
+    @field_validator("website", mode="before")
+    @classmethod
+    def validate_website(cls, v: str | None) -> str | None:
+        # if website is provided and doesn't start with http
+        if v and not v.startswith("http"):
+            return "http://" + v  # prepend http://
+        return v  # return valid website or None
+
+    @computed_field  # computed field for full name
+    @property  # concatenate first and last names
+    def display_name(self) -> str:
+        if self.first_name or self.last_name:
+            return f"{self.first_name} {self.last_name}"  # return full name
+        return self.username  # return username if names are empty
+
+    @computed_field  # computed field for account age
+    @property
+    def is_influencer(self) -> bool:
+        return self.follower_count > 10000  # influencer if followers > 10000
