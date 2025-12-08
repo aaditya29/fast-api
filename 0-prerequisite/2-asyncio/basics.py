@@ -20,8 +20,23 @@ async def async_function(test_param: str) -> str:  # coroutine function
 
 # we define another asynchronous function to demonstrate calling the synchronous function
 async def main():
-    sync_result = sync_function("Hello Sync")  # calling sync function
-    print(sync_result)  # printing result of sync function
+    # sync_result = sync_function("Hello Sync")  # calling sync function
+    # print(sync_result)  # printing result of sync function
+    # calling async function returns a coroutine object
+    coroutine_obj = async_function("Hello Async")
+    print(coroutine_obj)  # printing coroutine object
+
+    # awaiting the coroutine to get the result
+    coroutine_result = await coroutine_obj
+    print(coroutine_result)  # printing result of async function
+
+    # creating a task to run the async function concurrently
+    task = asyncio.create_task(async_function("Hello from Task"))
+    print(f"Task created: {task}")  # printing the task object
+
+    task_result = await task  # awaiting the task to get the result
+    print(f"Task result: {task_result}")  # printing the result of the task
+
 
 if __name__ == "__main__":
     asyncio.run(main())
