@@ -170,15 +170,6 @@ task = asyncio.create_task(fetch())
 
 Tasks = scheduled coroutines.
 
-# **8. Coroutines Are Similar to Generators**
-
-But with more capabilities:
-
-- Coroutines use `await`
-- Generators use `yield`
-- Coroutines integrate with event loop
-- Coroutines can await I/O and resume when ready
-
 ## 5. Tasks
 
 A Task is a scheduled coroutine. If a coroutine is a “plan” then a `task` is the execution of that plan on the event loop.
@@ -276,3 +267,97 @@ It means:
 This is the key insight:
 
 > The event loop controls task scheduling not the programmer.
+
+## 6. Blocking the Event Loop
+
+If we call synchronous blocking functions inside async code we freeze the event loop.
+
+Consider below example:
+
+### 6.1 Version A which uses `time.sleep(param)`
+
+```python
+import asyncio
+import time
+
+
+async def fetch_data(param):
+    print(f"Do something with {param}...")
+    time.sleep(param)
+    print(f"Done with {param}")
+    return f"Result of {param}"
+
+
+async def main():
+    task1 = asyncio.create_task(fetch_data(1))
+    task2 = asyncio.create_task(fetch_data(2))
+    result1 = await task1
+    print("Task 1 fully completed")
+    result2 = await task2
+    print("Task 2 fully completed")
+    return [result1, result2]
+
+
+t1 = time.perf_counter()
+
+results = asyncio.run(main())
+print(results)
+
+t2 = time.perf_counter()
+print(f"Finished in {t2 - t1:.2f} seconds")
+```
+
+Here
+
+- `time.sleep()` does NOT yield control
+- the event loop cannot run any other task
+- The entire event loop thread freezes for the duration of the sleep
+- Task 2 cannot run until Task 1 finishes even though both were scheduled concurrently
+
+Which results in no concurrency and behaves like synchronous code even though we used `create_task`.
+
+### 6.2 Version B which uses `await asyncio.sleep(param)`
+
+```python
+import asyncio
+import time
+
+
+async def fetch_data(param):
+    print(f"Do something with {param}...")
+    await asyncio.sleep(param)
+    print(f"Done with {param}")
+    return f"Result of {param}"
+
+
+async def main():
+    task1 = asyncio.create_task(fetch_data(1))
+    task2 = asyncio.create_task(fetch_data(2))
+    result2 = await task2
+    print("Task 2 fully completed")
+    result1 = await task1
+    print("Task 1 fully completed")
+    return [result1, result2]
+
+
+t1 = time.perf_counter()
+
+results = asyncio.run(main())
+print(results)
+
+t2 = time.perf_counter()
+print(f"Finished in {t2 - t1:.2f} seconds")
+```
+
+Here
+
+- await yields control to event loop
+- The coroutine is suspended
+- Event loop can run other tasks while this one is waiting
+- Real concurrency happens
+
+Result:
+
+- Task 1 sleeps 1s
+- Task 2 sleeps 2s
+- Both started together
