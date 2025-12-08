@@ -178,3 +178,101 @@ But with more capabilities:
 - Generators use `yield`
 - Coroutines integrate with event loop
 - Coroutines can await I/O and resume when ready
+
+## 5. Tasks
+
+A Task is a scheduled coroutine. If a coroutine is a “plan” then a `task` is the execution of that plan on the event loop.
+
+### 5.1 Why Tasks Exist
+
+Coroutines do not run concurrently on their own.<br>
+If we do:
+
+```python
+await fetch(1)
+await fetch(2)
+```
+
+They run sequentially.<br>
+To run them concurrently we must wrap the coroutine in a Task:
+
+```python
+task1 = asyncio.create_task(fetch(1))
+task2 = asyncio.create_task(fetch(2))
+```
+
+This schedules both coroutines to run on the event loop immediately enabling concurrency.
+
+### 5.2 How to Create a Task
+
+The function:
+
+```python
+asyncio.create_task(coro)
+```
+
+- wraps a coroutine in a Task.
+- schedules it on the event loop.
+- returns a Task object.
+
+##### Example:
+
+```python
+async def fetch(n):
+    await asyncio.sleep(n)
+    return n
+
+task = asyncio.create_task(fetch(1))
+```
+
+This does not wait for completion but starts running in the background.
+
+### 5.3 How to Wait for a Task
+
+We must `await` the task to get its result:
+
+```python
+result = await task
+```
+
+If we don’t `await` it:
+
+- Task still run
+- But our function may exit before task finishes
+- Unfinished tasks get cancelled silently
+
+### 5.4 Task Lifecycle
+
+A Task has states:
+
+- **PENDING:** created but not finished.
+- **RUNNING:** executing coroutine.
+- **SUSPENDED:** coroutine hit `await`.
+- **DONE:** finished or failed.
+
+We can inspect tasks:
+
+```python
+task.done()
+task.cancelled()
+```
+
+> Important: Awaiting a Task DOES NOT mean it runs next.
+
+Example:
+
+```python
+await task2
+```
+
+Does **not** mean “start running task2 now”.
+
+It means:
+
+- Pause this coroutine until task2 is done
+- Event loop decides which task runs next
+- Often, _task1 may finish before task2_ even if we awaited task2 first
+
+This is the key insight:
+
+> The event loop controls task scheduling not the programmer.
