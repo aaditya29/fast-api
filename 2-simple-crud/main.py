@@ -17,7 +17,10 @@ Endpoint	Method	Description
 /book/{book_id}	DELETE	Delete a book by id
 
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, status
+from fastapi.exceptions import HTTPException
+from pydantic import BaseModel
+from typing import Optional, List
 app = FastAPI()  # Initialize FastAPI application
 
 
@@ -78,36 +81,77 @@ books = [
     },
 ]
 
+
+# we build this class to define the structure of a book
+class Book(BaseModel):
+    id: int
+    title: str
+    author: str
+    publisher: str
+    published_date: str
+    page_count: int
+    language: str
+
+# we build this class to update the book details because if
+# we don't provide all the fields then it will throw an error due to missing fields
+
+
+class BookUpdateModel(BaseModel):
+    title: str
+    author: str
+    publisher: str
+    page_count: int
+    language: str
+
+
 # defining endpoints
 
-
-@app.get("/books")
+# we use response_model to define the response schema from class Books
+@app.get("/books", response_model=List[Book])
 async def get_books():
-    pass
+    return books  # return all books
+
 
 # post endpoint to create a book
+@app.post("/books", status_code=status.HTTP_201_CREATED)
+async def create_a_book(book_data: Book) -> dict:
+    # model_dump() is used to convert pydantic model to dictionary
+    new_book = book_data.model_dump()
+    books.append(new_book)  # add the new book to the books list
+    return new_book  # return the newly created book
 
 
-@app.post("/books")
-async def create_a_book() -> dict:
-    pass
-
-# get a book by id
-
-
-@app.post("/book/{book_id}")
+@app.get("/book/{book_id}")  # get a book by id
 async def get_book(book_id: int) -> dict:
-    pass
+    for book in books:
+        if book['id'] == book_id:
+            return book
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Book not found")
 
-# update a book by id
 
+@app.patch("/book/{book_id}")  # update a book by id
+async def update_book(book_id: int, book_update_data: BookUpdateModel) -> dict:
+    for book in books:
+        if book['id'] == book_id:  # found the book to be updated
+            book['title'] = book_update_data.title  # update title
+            book['publisher'] = book_update_data.publisher  # update publisher
+            book['page_count'] = book_update_data.page_count  # update page count
+            book['language'] = book_update_data.language  # update language
 
-@app.post("/book/{book_id}")
-async def update_book(book_id: int) -> dict:
-    pass
+            return book
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Book not found")
 
 
 # delete a book by id
-@app.post("/book/{book_id}")
-async def delete_book(book_id: int) -> dict:
-    pass
+@app.delete("/book/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_book(book_id: int):
+    for book in books:
+        if book["id"] == book_id:
+            books.remove(book)
+            return {}
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Book not found")
